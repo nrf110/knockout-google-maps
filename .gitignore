@@ -1,2 +1,4 @@
 .idea
 *.iml
+components
+node_modules

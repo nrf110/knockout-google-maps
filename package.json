@@ -1,0 +1,25 @@
+{
+    "name": "knockout-google-maps",
+    "description": "a knockout.js binding handler for working with Google Maps API v3 ",
+    "version": "0.0.1",
+    "dependencies": {},
+    "devDependencies": {
+        "bower": "~1.2.3",
+        "grunt": "~0.4.1",
+        "grunt-bower-clean": "~0.1.0",
+        "grunt-contrib-clean": "~0.5.0",
+        "grunt-contrib-compress": "~0.5.2",
+        "grunt-contrib-copy": "~0.4.1",
+        "grunt-contrib-watch": "~0.5.2",
+        "matchdep": "~0.1.1"
+    },
+    "engines": {
+        "node": ">=0.8.0"
+    },
+
+    "components": "components",
+    "javascripts": ".",
+    "dist": "dist",
+    "thridPartyLibs": ["knockout"],
+    "commonLibs": ["knockout"]
+}

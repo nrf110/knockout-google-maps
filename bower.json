@@ -4,5 +4,7 @@
     "dependencies": {
         "knockout": "http://knockoutjs.com/downloads/knockout-2.3.0.js"
     },
-    "devDependencies": {}
+    "devDependencies": {
+        "jquery": "1.10.2"
+    }
 }

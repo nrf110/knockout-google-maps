@@ -2,3 +2,4 @@
 *.iml
 components
 node_modules
+test_reports

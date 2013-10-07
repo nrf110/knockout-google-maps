@@ -8,24 +8,17 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-karma');
     // TODO: JSHint
+    // TODO: Uglify and dist
 
     grunt.initConfig({
-        copy: {
-            dist: {
-                files: [
-
-                ]
-            }
-        },
         karma: {
             unit: {
-                configFile: 'karma.conf.js',
+                configFile: 'karma-dev.conf.js',
                 background: true
             },
-            continuous: {
-                configFile: 'karma.conf.js',
-                singleRun: true,
-                browsers: ['PhantomJS']
+            ci: {
+                configFile: 'karma-ci.conf.js',
+                singleRun: true
             }
         },
         watch: {
@@ -39,4 +32,9 @@ module.exports = function(grunt) {
             }
         }
     });
+
+    grunt.registerTask('run', [
+        'karma:unit',
+        'watch'
+    ]);
 };

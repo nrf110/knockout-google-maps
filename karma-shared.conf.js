@@ -9,9 +9,9 @@ module.exports = function(config) {
 
 
         // frameworks to use
-        frameworks: ['mocha', 'chai'],
+        frameworks: ['mocha', 'expect'],
 
-        plugins: ['karma-mocha', 'karma-phantomjs-launcher', 'karma-chai'],
+        plugins: ['karma-mocha', 'karma-phantomjs-launcher', 'karma-expect'],
 
         // list of files / patterns to load in the browser
         files: [

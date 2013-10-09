@@ -4,13 +4,17 @@ module.exports = function(grunt) {
     //grunt plugins
     grunt.loadNpmTasks('grunt-contrib-connect');
     grunt.loadNpmTasks('grunt-contrib-uglify');
-    grunt.loadNpmTasks('grunt-contrib-copy');
+    grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-karma');
     // TODO: JSHint
-    // TODO: Uglify and dist
+
+    var banner = '// <%= pkg.name %> - v<%= pkg.version %> \n' +
+        '// (c) Nick Fisher - https://github.com/nrf110/knockout-google-maps\n' +
+        '// License: MIT (http://www.opensource.org/licenses/mit-license.php)\n';
 
     grunt.initConfig({
+        pkg: grunt.file.readJSON('package.json'),
         karma: {
             unit: {
                 configFile: 'karma-dev.conf.js',
@@ -23,12 +27,28 @@ module.exports = function(grunt) {
         },
         watch: {
             karma: {
-                files: ['knockout-google-maps.js', 'spec/**.js'],
+                files: ['src/*.js', 'spec/**.js'],
                 tasks: ['karma:unit:run']
+            }
+        },
+        uglify: {
+            options: {
+                mangle: false,
+                banner: banner
             },
-            js: {
-                files: ['knockout-google-maps.js'],
-                tasks: []
+            dist: {
+                files: {
+                    'dist/<%= pkg.name %>.min.js': ['src/<%= pkg.name %>.js']
+                }
+            }
+        },
+        concat: {
+            dist: {
+                options: {
+                    banner: banner
+                },
+                src: ['src/<%= pkg.name %>.js'],
+                dest: 'dist/<%= pkg.name %>.js'
             }
         }
     });
@@ -36,5 +56,11 @@ module.exports = function(grunt) {
     grunt.registerTask('run', [
         'karma:unit',
         'watch'
+    ]);
+
+    grunt.registerTask('dist', [
+        'karma:ci',
+        'concat',
+        'uglify'
     ]);
 };

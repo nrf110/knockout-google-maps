@@ -69,7 +69,7 @@
         var _center = unwrap(bindings.center);
         self.center = new google.maps.LatLng(_center.latitude, _center.longitude);
         self.zoom = unwrap(bindings.zoom);
-        self.draggable = unwrap(bindings.draggable);
+        self.draggable = o.draggable;
         self.dragging = false;
         self.markers = [];
         self.mapTypeId = unwrap(bindings.mapTypeId);
@@ -78,8 +78,8 @@
             if (_mapInstance === null) {
                 _mapInstance = new google.maps.Map(element, extend(o, {
                     center: self.center,
-                    zoom: bindings.zoom,
-                    draggable: bindings.draggable,
+                    zoom: self.zoom,
+                    draggable: self.draggable,
                     mapTypeId: self.mapTypeId
                 }));
 

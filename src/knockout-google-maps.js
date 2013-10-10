@@ -69,7 +69,7 @@
         var _center = unwrap(bindings.center);
         self.center = new google.maps.LatLng(_center.latitude, _center.longitude);
         self.zoom = unwrap(bindings.zoom);
-        self.draggable = o.draggable;
+        self.draggable = unwrap(bindings.draggable);
         self.dragging = false;
         self.markers = [];
         self.mapTypeId = unwrap(bindings.mapTypeId);
@@ -202,6 +202,116 @@
             return bindings;
         };
 
+        var handleEvents = function(map, bindings, updateBinding) {
+            map.on('drag', function() {
+                var center = map.center;
+
+                queueTask(function() {
+                    updateBinding('center', {
+                        latitude: center.lat(),
+                        longitude: center.lng()
+                    })
+                });
+            });
+
+            map.on('zoom_changed', function() {
+                var oldZoom = unwrap(bindings.zoom);
+                if (oldZoom != map.zoom) {
+                    queueTask(function() {
+                        updateBinding('zoom', map.zoom);
+                    });
+                }
+            });
+
+            map.on('center_changed', function() {
+                var center = map.center;
+
+                queueTask(function() {
+                    if (!map.dragging) {
+                        updateBinding('center', {
+                            latitude: center.lat(),
+                            longitude: center.lng()
+                        });
+                    }
+                });
+            });
+
+            map.on('maptypeid_changed', function() {
+                var mapTypeId = map.mapTypeId;
+
+                queueTask(function() {
+                    updateBinding('mapTypeId', mapTypeId);
+                });
+            });
+        };
+
+        var registerSubscriptions = function(map, bindings) {
+            bindings.markers.subscribe(function(changes) {
+                queueTask(function() {
+                    var removedIndexes = mapFilter(changes, function(item) {
+                        return item.status === 'deleted';
+                    }, function(item) {
+                        return item.index;
+                    });
+                    var added = filter(changes, function(item) {
+                        return item.status === 'added';
+                    });
+
+                    forEach(removedIndexes, _map.removeMarker);
+
+                    forEach(added, function(item) {                            
+                        map.addMarker(item.value.index, item.value.latitude, item.value.longitude, item.value.icon, item.value.infoWindow);
+                    });
+
+                    // Fit map when there is more than one marker.
+                    // This will change the center coordinates
+                    if (bindings['fit'] && unwrap(bindings.fit) && map.markers.length > 1) {
+                        map.fit();
+                    }
+                });
+            }, null, 'arrayChange');
+
+            // update map when center changes
+            bindings.center.subscribe(function(newValue) {
+                var center = map.center,
+                    lat = center.lat(),
+                    lng = center.lng();
+
+                if (floatEqual(lat, newValue.latitude) && floatEqual(lng, newValue.longitude)) {
+                    return;
+                }
+
+                if (!map.dragging) {
+                    map.center = new google.maps.LatLng(newValue.latitude, newValue.longitude);
+                    map.draw();
+                }
+            });
+
+            bindings.zoom.subscribe(function(newValue) {
+                if (newValue != undefined && newValue != null && newValue != "") {
+                    var intValue = parseInt(newValue);
+                    if (typeof intValue === 'number' && intValue !== map.zoom) {
+                        map.zoom = intValue;
+                        map.draw();
+                    }
+                }
+            });
+
+            if (bindings.mapTypeId) {
+                bindings.mapTypeId.subscribe(function(newValue) {
+                    if (newValue != undefined && newValue != null && newValue != "" && newValue != map.mapTypeId) {
+                        var uppercase = newValue.toUpperCase(),
+                            lowercase = newValue.toLowerCase();
+
+                        if (google.maps.MapTypeId[uppercase] && google.maps.MapTypeId[uppercase] == lowercase) {
+                            map.mapTypeId = lowercase;
+                            map.draw();
+                        }
+                    }
+                });
+            }
+        };
+
         return {
             init: function(element, valueAccessor, allBindingsAccessor, viewModel) {
                 var allBindings = allBindingsAccessor(),
@@ -216,115 +326,20 @@
                     }
                 };
 
-                _map.on('drag', function() {
-                    var center = _map.center;
-
-                    queueTask(function() {
-                        updateBinding('center', {
-                            latitude: center.lat(),
-                            longitude: center.lng()
-                        })
-                    });
-                });
-
-                _map.on('zoom_changed', function() {
-                    var oldZoom = unwrap(bindings.zoom);
-                    if (oldZoom != _map.zoom) {
-                        queueTask(function() {
-                            updateBinding('zoom', _map.zoom);
-                        });
-                    }
-                });
-
-                _map.on('center_changed', function() {
-                    var center = _map.center;
-
-                    queueTask(function() {
-                        if (!_map.dragging) {
-                            updateBinding('center', {
-                                latitude: center.lat(),
-                                longitude: center.lng()
-                            });
-                        }
-                    });
-                });
-
-                _map.on('maptypeid_changed', function() {
-                    var mapTypeId = _map.mapTypeId;
-
-                    queueTask(function() {
-                        updateBinding('mapTypeId', mapTypeId);
-                    });
-                });
+                handleEvents(_map, bindings, updateBinding);
 
                 viewModel['_map'] = _map;
 
                 _map.draw();
 
-                bindings.markers.subscribe(function(changes) {
-                    queueTask(function() {
-                        var removedIndexes = mapFilter(changes, function(item) {
-                            return item.status === 'deleted';
-                        }, function(item) {
-                            return item.index;
-                        });
-                        var added = filter(changes, function(item) {
-                            return item.status === 'added';
-                        });
-
-                        forEach(removedIndexes, _map.removeMarker);
-
-                        forEach(added, function(item) {
-                            _map.addMarker(item.latitude, item.longitude, item.icon, item.infoWindow);
-                        });
-
-                        // Fit map when there is more than one marker.
-                        // This will change the center coordinates
-                        if (bindings['fit'] && unwrap(bindings.fit) && _map.markers.length > 1) {
-                            _map.fit();
-                        }
-                    });
-                }, null, 'arrayChange');
-
-                // update map when center changes
-                bindings.center.subscribe(function(newValue) {
-                    var center = _map.center,
-                        lat = center.lat(),
-                        lng = center.lng();
-
-                    if (floatEqual(lat, newValue.latitude) && floatEqual(lng, newValue.longitude)) {
-                        return;
-                    }
-
-                    if (!_map.dragging) {
-                        _map.center = new google.maps.LatLng(newValue.latitude, newValue.longitude);
-                        _map.draw();
-                    }
-                });
-
-                bindings.zoom.subscribe(function(newValue) {
-                    if (newValue != undefined && newValue != null && newValue != "") {
-                        var intValue = parseInt(newValue);
-                        if (typeof intValue === 'number' && intValue !== _map.zoom) {
-                            _map.zoom = intValue;
-                            _map.draw();
-                        }
-                    }
-                });
-
-                if (bindings.mapTypeId) {
-                    bindings.mapTypeId.subscribe(function(newValue) {
-                        if (newValue != undefined && newValue != null && newValue != "" && newValue != _map.mapTypeId) {
-                            var uppercase = newValue.toUpperCase(),
-                                lowercase = newValue.toLowerCase();
-
-                            if (google.maps.MapTypeId[uppercase] && google.maps.MapTypeId[uppercase] == lowercase) {
-                                _map.mapTypeId = lowercase;
-                                _map.draw();
-                            }
-                        }
+                if (bindings.markers) {
+                    var i = 0;
+                    forEach(unwrap(bindings.markers), function(marker) {
+                        _map.addMarker(i, marker.latitude, marker.longitude, marker.icon, marker.infoWindow);
                     });
                 }
+
+                registerSubscriptions(_map, bindings);                
             }
         };
     })();

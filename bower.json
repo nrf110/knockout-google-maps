@@ -2,7 +2,7 @@
     "name": "knockout-google-maps",
     "version": "0.0.1",
     "dependencies": {
-        "knockout": "http://knockoutjs.com/downloads/knockout-2.3.0.js"
+        "knockout": "http://knockoutjs.com/downloads/knockout-3.0.0rc.js"
     },
     "devDependencies": {
         "jquery": "1.10.2"

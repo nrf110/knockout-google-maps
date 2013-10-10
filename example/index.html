@@ -18,7 +18,14 @@
             var MapViewModel = function() {
                 var self = this;
 
-                self.locations = ko.observableArray([]);
+                self.locations = ko.observableArray([
+                    {
+                        latitude: 38.85,
+                        longitude: -77.33,
+                        icon: 'http://maps.google.com/mapfiles/ms/icons/green-dot.png',
+                        infoWindow: 'hello!'
+                    }
+                ]);
                 self.draggable = ko.observable(true);
                 self.zoom = ko.observable(8);
                 self.mapType = ko.observable(google.maps.MapTypeId.ROADMAP);
@@ -34,7 +41,7 @@
                         self.latitude(value.latitude);
                         self.longitude(value.longitude);
                     }
-                });
+                });                
             };
 
             var viewModel = new MapViewModel();

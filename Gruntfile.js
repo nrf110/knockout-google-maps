@@ -7,7 +7,6 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-contrib-concat');
     grunt.loadNpmTasks('grunt-contrib-watch');
     grunt.loadNpmTasks('grunt-karma');
-    // TODO: JSHint
 
     var banner = '// <%= pkg.name %> - v<%= pkg.version %> \n' +
         '// (c) Nick Fisher - https://github.com/nrf110/knockout-google-maps\n' +
@@ -26,6 +25,12 @@ module.exports = function(grunt) {
             }
         },
         watch: {
+            options: {
+                livereload: true
+            },
+            example: {
+                files: ['example/*.js', 'example/*.html']
+            },
             karma: {
                 files: ['src/*.js', 'spec/**.js'],
                 tasks: ['karma:unit:run']
@@ -50,11 +55,20 @@ module.exports = function(grunt) {
                 src: ['src/<%= pkg.name %>.js'],
                 dest: 'dist/<%= pkg.name %>.js'
             }
+        },
+        connect: {
+            server: {
+                options: {
+                    port: 9000,
+                    base: ''
+                }
+            }
         }
     });
 
     grunt.registerTask('run', [
         'karma:unit',
+        'connect',
         'watch'
     ]);
 

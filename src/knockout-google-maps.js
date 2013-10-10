@@ -66,44 +66,52 @@
             self = this,
             currentInfoWindow = null;
 
-        self.center = unwrap(bindings.center);
+        var _center = unwrap(bindings.center);
+        self.center = new google.maps.LatLng(_center.latitude, _center.longitude);
         self.zoom = unwrap(bindings.zoom);
         self.draggable = unwrap(bindings.draggable);
         self.dragging = false;
         self.markers = [];
-
-        _mapInstance = new google.maps.Map(element, extend(o, {
-            center: bindings.center,
-            zoom: bindings.zoom,
-            draggable: bindings.draggable,
-            mapTypeId: bindings.mapTypeId
-        }));
-
-        google.maps.event.addListener(_mapInstance, 'dragstart', function() {
-            self.dragging = true;
-        });
-        google.maps.event.addListener(_mapInstance, 'idle', function() {
-            self.dragging = false;
-        });
-        google.maps.event.addListener(_mapInstance, 'drag', function() {
-            self.dragging = true;
-        });
-        google.maps.event.addListener(_mapInstance, 'zoom_changed', function() {
-            self.zoom = _mapInstance.getZoom();
-            self.center = _mapInstance.getCenter();
-        });
-        google.maps.event.addListener(_mapInstance, 'center_changed', function() {
-            self.center = _mapInstance.getCenter();
-        });
-
-        if (_handlers.length > 0) {
-            forEach(_handlers, function(handler) {
-                google.maps.event.addListener(_mapInstance, handler.on, handler.handler);
-            });
-        }
+        self.mapTypeId = unwrap(bindings.mapTypeId);
 
         self.draw = function() {
+            if (_mapInstance === null) {
+                _mapInstance = new google.maps.Map(element, extend(o, {
+                    center: self.center,
+                    zoom: bindings.zoom,
+                    draggable: bindings.draggable,
+                    mapTypeId: self.mapTypeId
+                }));
+
+                google.maps.event.addListener(_mapInstance, 'dragstart', function() {
+                    self.dragging = true;
+                });
+                google.maps.event.addListener(_mapInstance, 'idle', function() {
+                    self.dragging = false;
+                });
+                google.maps.event.addListener(_mapInstance, 'drag', function() {
+                    self.dragging = true;
+                });
+                google.maps.event.addListener(_mapInstance, 'zoom_changed', function() {
+                    self.zoom = _mapInstance.getZoom();
+                    self.center = _mapInstance.getCenter();
+                });
+                google.maps.event.addListener(_mapInstance, 'center_changed', function() {
+                    self.center = _mapInstance.getCenter();
+                });
+                google.maps.event.addListener(_mapInstance, 'maptypeid_changed', function() {
+                    self.mapTypeId = _mapInstance.getMapTypeId();
+                });
+
+                if (_handlers.length > 0) {
+                    forEach(_handlers, function(handler) {
+                        google.maps.event.addListener(_mapInstance, handler.on, handler.handler);
+                    });
+                }
+            }
+
             google.maps.event.trigger(_mapInstance, "resize");
+            _mapInstance.setMapTypeId(self.mapTypeId);
 
             var instanceCenter = _mapInstance.getCenter();
 
@@ -118,7 +126,7 @@
         };
 
         self.on = function(evt, handler) {
-            self._handlers.push({
+            _handlers.push({
                 "on": evt,
                 "handler": handler
             });
@@ -201,7 +209,7 @@
                     _map = new MapModel(bindings, element);
 
                 var updateBinding = function(binding, value) {
-                    if (ko.utils.isWriteableObservable(bindings[binding])) {
+                    if (ko.isWriteableObservable(bindings[binding])) {
                         bindings[binding](value);
                     } else if (allBindings['_ko_property_writers'] && allBindings['_ko_property_writers'][binding]) {
                         allBindings['_ko_property_writers'][binding](value); // update non-observable property
@@ -241,6 +249,13 @@
                     });
                 });
 
+                _map.on('maptypeid_changed', function() {
+                    var mapTypeId = _map.mapTypeId;
+
+                    queueTask(function() {
+                        updateBinding('mapTypeId', mapTypeId);
+                    });
+                });
 
                 viewModel['_map'] = _map;
 
@@ -288,11 +303,28 @@
                 });
 
                 bindings.zoom.subscribe(function(newValue) {
-                    if (newValue !== _map.zoom) {
-                        _map.zoom = newValue;
-                        _map.draw();
+                    if (newValue != undefined && newValue != null && newValue != "") {
+                        var intValue = parseInt(newValue);
+                        if (typeof intValue === 'number' && intValue !== _map.zoom) {
+                            _map.zoom = intValue;
+                            _map.draw();
+                        }
                     }
                 });
+
+                if (bindings.mapTypeId) {
+                    bindings.mapTypeId.subscribe(function(newValue) {
+                        if (newValue != undefined && newValue != null && newValue != "" && newValue != _map.mapTypeId) {
+                            var uppercase = newValue.toUpperCase(),
+                                lowercase = newValue.toLowerCase();
+
+                            if (google.maps.MapTypeId[uppercase] && google.maps.MapTypeId[uppercase] == lowercase) {
+                                _map.mapTypeId = lowercase;
+                                _map.draw();
+                            }
+                        }
+                    });
+                }
             }
         };
     })();

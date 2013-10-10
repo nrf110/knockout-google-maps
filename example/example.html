@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Knockout Google Maps</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <style type="text/css">
+        html { height: 100% }
+        body { height: 100%; margin: 0; padding: 0 }
+        #map { height: 50% }
+    </style>
+    <script src="//localhost:35729/livereload.js"></script>
+    <script type="text/javascript" src="https://maps.googleapis.com/maps/api/js?&sensor=false"></script>
+    <script type="text/javascript" src="../lib/jquery-1.10.2.js"></script>
+    <script type="text/javascript" src="../lib/knockout-2.3.0.js"></script>
+    <script type="text/javascript" src="../src/knockout-google-maps.js"></script>
+    <script type="text/javascript">
+        $(function() {
+            var MapViewModel = function() {
+                var self = this;
+
+                self.locations = ko.observableArray([]);
+                self.draggable = ko.observable(true);
+                self.zoom = ko.observable(8);
+                self.mapType = ko.observable(google.maps.MapTypeId.ROADMAP);
+                self.latitude = ko.observable(38.85);
+                self.longitude = ko.observable(-77.33);
+                self.center = ko.computed({
+                    read: function() {
+                        var lat = self.latitude(),
+                            lng = self.longitude();
+                        return { latitude: lat, longitude: lng };
+                    },
+                    write: function(value) {
+                        self.latitude(value.latitude);
+                        self.longitude(value.longitude);
+                    }
+                });
+            };
+
+            var viewModel = new MapViewModel();
+            ko.applyBindings(viewModel);
+        });
+    </script>
+</head>
+    <body>
+        <div id="map" data-bind="gmaps: {}, center: center, zoom: zoom, markers: locations, mapTypeId: mapType, draggable: draggable"></div>
+        <div>
+            <label>Latitude: <input type="text" data-bind="value: latitude, valueUpdate: 'afterkeydown'"></span></label>
+            <label>Longitude: </label><input type="text" data-bind="value: longitude, valueUpdate: 'afterkeydown'"></span></label>
+        </div>
+        <div>
+            <label>Zoom: <input type="text" data-bind="value: zoom, valueUpdate: 'afterkeydown'"></label>
+            <label>Map Type: <input type="text" data-bind="value: mapType, valueUpdate: 'afterkeydown'"></label>
+        </div>
+    </body>
+</html>

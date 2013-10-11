@@ -29,12 +29,12 @@ module.exports = function(grunt) {
                 livereload: true
             },
             example: {
-                files: ['example/*.js', 'example/*.html']
-            },
+                files: ['example/**.js', 'example/**.html']
+            }/*,
             karma: {
                 files: ['src/*.js', 'spec/**.js'],
                 tasks: ['karma:unit:run']
-            }
+            }*/
         },
         uglify: {
             options: {

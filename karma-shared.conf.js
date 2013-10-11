@@ -11,11 +11,18 @@ module.exports = function(config) {
         // frameworks to use
         frameworks: ['mocha', 'expect'],
 
-        plugins: ['karma-mocha', 'karma-phantomjs-launcher', 'karma-expect'],
+        plugins: [
+            'karma-mocha',
+            'karma-phantomjs-launcher',
+            'karma-expect'
+        ],
 
         // list of files / patterns to load in the browser
         files: [
-            'spec/sample_spec.js'
+            'components/knockout/index.js',
+            'src/**.js',
+            'spec/**.js',
+            'https://maps.googleapis.com/maps/api/js?&sensor=false'
         ],
 
 

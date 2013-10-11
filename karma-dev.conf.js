@@ -5,7 +5,12 @@ module.exports = function(config) {
 
   config.set({
 
-    plugins: ['karma-mocha', 'karma-phantomjs-launcher', 'karma-expect', 'karma-growl-reporter'],
+    plugins: [
+        'karma-mocha',
+        'karma-phantomjs-launcher',
+        'karma-expect',
+        'karma-growl-reporter'
+    ],
 
     // test results reporter to use
     // possible values: 'dots', 'progress', 'junit', 'growl', 'coverage'

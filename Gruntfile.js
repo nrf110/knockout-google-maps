@@ -14,7 +14,7 @@ module.exports = function(grunt) {
 
     grunt.initConfig({
         pkg: grunt.file.readJSON('package.json'),
-        karma: {
+        /*karma: {
             unit: {
                 configFile: 'karma-dev.conf.js',
                 background: true
@@ -23,13 +23,13 @@ module.exports = function(grunt) {
                 configFile: 'karma-ci.conf.js',
                 singleRun: true
             }
-        },
+        },*/
         watch: {
             options: {
                 livereload: true
             },
             example: {
-                files: ['example/**.js', 'example/**.html']
+                files: ['example/**.js', 'example/**.html', 'src/**.js']
             }/*,
             karma: {
                 files: ['src/*.js', 'spec/**.js'],
@@ -67,7 +67,7 @@ module.exports = function(grunt) {
     });
 
     grunt.registerTask('run', [
-        'karma:unit',
+        //'karma:unit',
         'connect',
         'watch'
     ]);

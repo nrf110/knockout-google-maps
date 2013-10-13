@@ -26,19 +26,25 @@
     };
 
     var unwrap = ko.utils.unwrapObservable,
-        forEach = ko.utils.arrayForEach,
         map = ko.utils.arrayMap,
         find = ko.utils.arrayFirst,
-        filter = ko.utils.arrayFilter,
-        extend = function(target) {
-            for (var idx = 1; idx < arguments.length; idx++) {
-                var source = arguments[idx];
-                for (prop in source) {
-                    target[prop] = unwrap(source[prop]);
-                }
+        filter = ko.utils.arrayFilter;
+
+    var extend = function(target) {
+        for (var idx = 1; idx < arguments.length; idx++) {
+            var source = arguments[idx];
+            for (prop in source) {
+                target[prop] = unwrap(source[prop]);
             }
-            return target;
-        };
+        }
+        return target;
+    };
+
+    var forEach = function(array, action) {
+        for (var idx = 0; idx < array.length; idx++) {
+            action(array[idx], idx);
+        }
+    };
 
     var mapFilter = function(array, predicate, transform) {
         var results = [];
@@ -64,10 +70,12 @@
             },
             o = extend({}, _defaults, unwrap(bindings.options)),
             self = this,
-            currentInfoWindow = null;
+            currentInfoWindow = null,
+            currentInfoWindowElement = null;
 
         var _center = unwrap(bindings.center);
         self.center = new google.maps.LatLng(_center.latitude, _center.longitude);
+        self.bounds = null;
         self.zoom = unwrap(bindings.zoom);
         self.draggable = unwrap(bindings.draggable);
         self.dragging = false;
@@ -102,12 +110,29 @@
                 google.maps.event.addListener(_mapInstance, 'maptypeid_changed', function() {
                     self.mapTypeId = _mapInstance.getMapTypeId();
                 });
+                google.maps.event.addListener(_mapInstance, 'bounds_changed', function() {
+                    var bounds = _mapInstance.getBounds();
+                    self.bounds = {
+                        sw: {
+                            latitude: bounds.getSouthWest().lat(),
+                            longitude: bounds.getSouthWest().lng()
+                        },
+                        ne: {
+                            latitude: bounds.getNorthEast().lat(),
+                            longitude: bounds.getNorthEast().lng()
+                        }
+                    };
+                });
 
                 if (_handlers.length > 0) {
                     forEach(_handlers, function(handler) {
                         google.maps.event.addListener(_mapInstance, handler.on, handler.handler);
                     });
                 }
+
+                forEach(bindings.markers(), function(marker, idx) {
+                    self.addMarker(idx, marker);
+                });
             }
 
             google.maps.event.trigger(_mapInstance, "resize");
@@ -144,25 +169,96 @@
             }
         };
 
-        self.addMarker = function(idx, lat, lng, icon, infoWindowContent) {
+        self.addMarker = function(idx, data) {
+            var lat = unwrap(data.latitude),
+                lng = unwrap(data.longitude),
+                icon = unwrap(data.icon) || null,
+                title = unwrap(data.title) || null,
+                draggable = unwrap(data.draggable) || null,
+                visible = unwrap(data.visible) || null,
+                clickable = unwrap(data.clickable) || null;
+
             var marker = new google.maps.Marker({
                 position: new google.maps.LatLng(lat, lng),
-                map: _mapInstance,
-                icon: icon
+                map: _mapInstance
             });
 
-            // TODO: find a better way of mating info windows to knockout templates
-            if (infoWindowContent != null) {
-                var infoWindow = new google.maps.InfoWindow({
-                    content: infoWindowContent
+            if (icon) marker.setIcon(icon);
+            if (ko.isObservable(data.icon)) {
+                data.icon.subscribe(function(newValue) {
+                    marker.setIcon(newValue);
                 });
+            }
+            if (title) marker.setTitle(title);
+            if (ko.isObservable(data.title)) {
+                data.title.subscribe(function(newValue) {
+                    marker.setTitle(newValue);
+                });
+            }
+            if (draggable) marker.setDraggable(draggable);
+            if (ko.isObservable(data.draggable)) {
+                data.draggable.subscribe(function(newValue) {
+                    marker.setDraggable(newValue);
+                });
+            }
+            if (visible) marker.setVisible(visible);
+            if (ko.isObservable(data.visible)) {
+                data.visible.subscribe(function(newValue) {
+                    marker.setVisible(newValue);
+                });
+            }
+            if (clickable) maker.setClickable(clickable);
+            if (ko.isObservable(data.clickable)) {
+                data.clickable.subscribe(function(newValue) {
+                    marker.setClickable(newValue);
+                });
+            }
+            if (ko.isObservable(data.latitude) && ko.isObservable(data.longitude)) {
+                ko.computed(function() {
+                    var latitude = data.latitude(),
+                        longitude = data.longitude();
+                    return { latitude: latitude, longitude: longitude };
+                }).subscribe(function(newPosition) {
+                    var originalPosition = marker.getPosition();
+                    if (!(floatEqual(newPosition.latitude, originalPosition.lat()) &&
+                        floatEqual(newPosition.longitude, originalPosition.lng()))) {
+                        marker.setPosition(new google.maps.LatLng(newPosition.latitude, newPosition.longitude));
+                    }
+                });
+            }
 
+            if (data.infoWindow != null) {
                 google.maps.event.addListener(marker, "click", function() {
                     if (currentInfoWindow != null) {
                         currentInfoWindow.close();
+                        ko.cleanNode(currentInfoWindowElement);
                     }
-                    infoWindow.open(_mapInstance, marker);
-                    currentInfoWindow = infoWindow;
+
+                    if (data.infoWindow) {
+                        var content = "";
+                        var infoWindowContent = unwrap(data.infoWindow);
+                        if (typeof(infoWindowContent) === 'object') {
+                            content = document.getElementById(infoWindowContent.template).innerHTML;
+                        } else {
+                            content = infoWindowContent;
+                        }
+
+                        var container = document.createElement("div");
+                        container.setAttribute("id", "info-window-container");
+                        container.innerHTML = content;
+
+                        var infoWindow = new google.maps.InfoWindow({
+                            content: container
+                        });
+
+                        infoWindow.open(_mapInstance, marker);
+                        currentInfoWindow = infoWindow;
+                        currentInfoWindowElement = container;
+                        google.maps.event.addListener(infoWindow, 'closeclick', function() {
+                            ko.cleanNode(currentInfoWindowElement);
+                        });
+                        ko.applyBindings(data, container);
+                    }
                 });
             }
 
@@ -173,7 +269,7 @@
                 "lng": lng,
                 "draggable": false,
                 "icon": icon,
-                "infoWindowContent": infoWindowContent
+                "infoWindow": data.infoWindow
             };
 
             return marker;
@@ -194,7 +290,7 @@
             var options = valueAccessor() || {},
                 bindings = { options: options };
 
-            forEach(['handlers', 'draggable', 'zoom', 'center', 'markers', 'mapTypeId', 'fit'], function(binding) {
+            forEach(['handlers', 'draggable', 'zoom', 'center', 'markers', 'mapTypeId', 'fit', 'bounds', 'events'], function(binding) {
                 if (allBindings[binding])
                     bindings[binding] = allBindings[binding];
             });
@@ -243,6 +339,14 @@
                     updateBinding('mapTypeId', mapTypeId);
                 });
             });
+
+            map.on('bounds_changed', function() {
+                var bounds = map.getBounds();
+
+                queueTask(function() {
+                    updateBinding('bounds', bounds);
+                });
+            });
         };
 
         var registerSubscriptions = function(map, bindings) {
@@ -259,8 +363,8 @@
 
                     forEach(removedIndexes, _map.removeMarker);
 
-                    forEach(added, function(item) {                            
-                        map.addMarker(item.value.index, item.value.latitude, item.value.longitude, item.value.icon, item.value.infoWindow);
+                    forEach(added, function(item) {
+                        map.addMarker(item.index, item.value);
                     });
 
                     // Fit map when there is more than one marker.
@@ -297,7 +401,7 @@
                 }
             });
 
-            if (bindings.mapTypeId) {
+            if (ko.isObservable(bindings.mapTypeId)) {
                 bindings.mapTypeId.subscribe(function(newValue) {
                     if (newValue != undefined && newValue != null && newValue != "" && newValue != map.mapTypeId) {
                         var uppercase = newValue.toUpperCase(),
@@ -309,6 +413,12 @@
                         }
                     }
                 });
+            }
+
+            if (ko.isObservable(bindings.events)) {
+                bindings.events.subscribe(function(changes) {
+
+                }, null, 'arrayChange');
             }
         };
 
@@ -331,13 +441,6 @@
                 viewModel['_map'] = _map;
 
                 _map.draw();
-
-                if (bindings.markers) {
-                    var i = 0;
-                    forEach(unwrap(bindings.markers), function(marker) {
-                        _map.addMarker(i, marker.latitude, marker.longitude, marker.icon, marker.infoWindow);
-                    });
-                }
 
                 registerSubscriptions(_map, bindings);                
             }

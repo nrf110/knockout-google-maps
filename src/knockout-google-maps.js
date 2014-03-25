@@ -26,15 +26,14 @@
     };
 
     var unwrap = ko.utils.unwrapObservable,
-        map = ko.utils.arrayMap,
-        find = ko.utils.arrayFirst,
         filter = ko.utils.arrayFilter;
 
     var extend = function(target) {
         for (var idx = 1; idx < arguments.length; idx++) {
             var source = arguments[idx];
-            for (prop in source) {
-                target[prop] = unwrap(source[prop]);
+            for (var prop in source) {
+                if (source.hasOwnProperty(prop))
+                    target[prop] = unwrap(source[prop]);
             }
         }
         return target;
@@ -61,8 +60,10 @@
 
     var MapModel = function(bindings, element) {
         var _mapInstance = null,
+            _clusterer = null,
             _markers = [], // caches the instances of google.maps.Marker
             _handlers = [], // event handler objects
+            _userHandlers = [], //user-defined event handler objects
             _defaults = {
                 zoom: 8,
                 draggable: false,
@@ -70,6 +71,7 @@
             },
             o = extend({}, _defaults, unwrap(bindings.options)),
             self = this,
+            currentMarker = null,
             currentInfoWindow = null,
             currentInfoWindowElement = null;
 
@@ -81,6 +83,7 @@
         self.dragging = false;
         self.markers = [];
         self.mapTypeId = unwrap(bindings.mapTypeId);
+        self.clusterSettings = unwrap(bindings.cluster);
 
         self.draw = function() {
             if (_mapInstance === null) {
@@ -148,6 +151,11 @@
             if (_mapInstance.getZoom() != self.zoom) {
                 _mapInstance.setZoom(self.zoom);
             }
+
+            if (self.clusterSettings) {
+                _clusterer = new MarkerClusterer(_mapInstance, _markers, self.clusterSettings);
+            }
+
         };
 
         self.on = function(evt, handler) {
@@ -155,6 +163,14 @@
                 "on": evt,
                 "handler": handler
             });
+        };
+
+        self.addHandler = function(idx, evt, handler) {
+            _userHandlers.splice(idx, 0, google.maps.event.addListener(_mapInstance, evt, handler))
+        };
+
+        self.removeHandler = function(idx) {
+            if (_userHandlers[idx]) _userHandlers.splice(idx, 1);
         };
 
         self.fit = function() {
@@ -234,6 +250,8 @@
                         ko.cleanNode(currentInfoWindowElement);
                     }
 
+                    currentMarker = marker;
+
                     if (data.infoWindow) {
                         var content = "";
                         var infoWindowContent = unwrap(data.infoWindow);
@@ -256,27 +274,34 @@
                         currentInfoWindowElement = container;
                         google.maps.event.addListener(infoWindow, 'closeclick', function() {
                             ko.cleanNode(currentInfoWindowElement);
+                            currentMarker = null;
                         });
                         ko.applyBindings(data, container);
                     }
                 });
             }
 
-            _markers[idx] = marker;
+            _markers.splice(idx, 0, marker);
 
-            self.markers[idx] = {
+            self.markers.splice(idx, 0, {
                 "lat": lat,
                 "lng": lng,
                 "draggable": false,
                 "icon": icon,
                 "infoWindow": data.infoWindow
-            };
+            });
 
             return marker;
         };
 
         self.removeMarker = function(idx) {
             var marker = _markers[idx];
+
+            if (currentMarker === marker) {
+                currentInfoWindow.close();
+                ko.cleanNode(currentInfoWindowElement);
+                currentMarker = null;
+            }
 
             _markers.splice(idx, 1);
             self.markers.splice(idx, 1);
@@ -290,7 +315,7 @@
             var options = valueAccessor() || {},
                 bindings = { options: options };
 
-            forEach(['handlers', 'draggable', 'zoom', 'center', 'markers', 'mapTypeId', 'fit', 'bounds', 'events'], function(binding) {
+            forEach(['handlers', 'draggable', 'zoom', 'center', 'markers', 'mapTypeId', 'fit', 'bounds', 'events', 'cluster'], function(binding) {
                 if (allBindings[binding])
                     bindings[binding] = allBindings[binding];
             });
@@ -361,7 +386,7 @@
                         return item.status === 'added';
                     });
 
-                    forEach(removedIndexes, _map.removeMarker);
+                    forEach(removedIndexes, map.removeMarker);
 
                     forEach(added, function(item) {
                         map.addMarker(item.index, item.value);
@@ -417,8 +442,31 @@
 
             if (ko.isObservable(bindings.events)) {
                 bindings.events.subscribe(function(changes) {
+                    queueTask(function() {
+                        var removedIndexes = mapFilter(changes, function(item) {
+                            return item.status === 'deleted';
+                        }, function(item) {
+                            return item.index;
+                        });
 
+                        var added = filter(changes, function(item) {
+                            return item.status === 'added';
+                        });
+
+                        forEach(removedIndexes, map.removeHandler);
+
+                        forEach(added, function(item) {
+                            map.addHandler(item.value.evt, item.value.handler);
+                        });
+                    });
                 }, null, 'arrayChange');
+            }
+
+            if (ko.isObservable(bindings.cluster)) {
+                bindings.cluster.subscribe(function(newValue) {
+                    map.clusterSettings = newValue;
+                    map.draw();
+                });
             }
         };
 

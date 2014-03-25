@@ -1,7 +1,4 @@
-- support binding/unbinding user-definable handlers for map events
-- support optional marker clustering
-- support binding/uninbind user-definable handlers for marker events?
+- support binding/unbind user-definable handlers for marker events?
 - support observable map options (specifically, toggling individual controls)
 - support other types of overlays and layers
-- make sure info windows are disposed properly when markers are removed
 - enable DrawingManager
